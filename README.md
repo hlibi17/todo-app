@@ -32,15 +32,13 @@ This is a **fully-featured, modern Todo application** built with vanilla HTML, C
 ## 🖼️ Screenshots
 
 ### Light Mode - Desktop
-![Desktop Light](https://via.placeholder.com/1200x800/ffffff/4a5568?text=Enhanced+Todo+App+-+Light+Mode)
+![Desktop Light](<img width="1878" height="964" alt="Opera Snapshot_2026-03-13_014110_index html" src="https://github.com/user-attachments/assets/26c9b889-3650-4525-93fd-208f95625d89" />)
 
-### Dark Mode - Mobile
-![Mobile Dark](https://via.placeholder.com/400x800/1a202c/4a5568?text=Enhanced+Todo+App+-+Dark+Mode)
+### Dark Mode - Desktop
+![Mobile Dark](<img width="1878" height="964" alt="Opera Snapshot_2026-03-13_014055_index html" src="https://github.com/user-attachments/assets/9acda73a-5a6f-42aa-8057-09362bd87216" />)
 
 ### Team View & Dashboard
-![Team Dashboard](https://via.placeholder.com/1200x800/2d3748/4a5568?text=Team+Dashboard)
-
-*(Replace with actual screenshots after deployment)*
+![Team Dashboard](<img width="1878" height="964" alt="Opera Snapshot_2026-03-13_014127_index html" src="https://github.com/user-attachments/assets/7780f7c5-7d9f-4cdd-bd75-674267d0022b" />)
 
 ## 🚀 Quick Start
 
@@ -150,4 +148,5 @@ MIT License - see [LICENSE](LICENSE) file.
 ⭐ **Star this repo if you found it useful!** ⭐
 
 **Deploy instantly**: Just upload `index.html` to GitHub Pages, Netlify, Vercel, or any static host!
+
 
