@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Todo App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+        .glass-dark { background: rgba(31, 41, 55, 0.9); backdrop-filter: blur(10px); }
+        .task-enter { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .checkbox-wrapper input:checked + div { background: linear-gradient(135deg, #6366f1, #8b5cf6); border-color: #6366f1; }
+        .checkbox-wrapper input:checked + div svg { display: block; }
+        .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .dark .scrollbar-thin::-webkit-scrollbar-thumb { background: #4b5563; }
+        .sidebar { transition: transform 0.3s ease; }
+        .sidebar.hidden { transform: translateX(-100%); }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 min-h-screen flex transition-colors duration-300 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar fixed left-0 top-0 h-full w-72 glass dark:glass-dark z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 overflow-y-auto">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-indigo-600 dark:text-indigo-600"><i class="fas fa-chart-pie mr-2"></i>Dashboard</h2>
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-500"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <!-- Stats Overview -->
+            <div class="space-y-4 mb-6">
+                <div class="bg-white/50 dark:bg-gray-800/50 rounded-xl p-4">
+                    <div class="text-sm text-gray-500 dark:text-white mb-1">Total Tasks</div>
+                    <div class="text-2xl font-bold text-gray-800 dark:text-white" id="sidebar-total">0</div>
+                </div>
+                <div class="bg-white/50 dark:bg-gray-800/50 rounded-xl p-4">
+                    <div class="text-sm text-gray-500 dark:text-white mb-1">Completed</div>
+                    <div class="text-2xl font-bold text-green-600" id="sidebar-completed">0</div>
+                </div>
+                <div class="bg-white/50 dark:bg-gray-800/50 rounded-xl p-4">
+                    <div class="text-sm text-gray-500 dark:text-white mb-1">Pending</div>
+                    <div class="text-2xl font-bold text-orange-500" id="sidebar-pending">0</div>
+                </div>
+            </div>
+            
+            <!-- Categories Overview -->
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-600 dark:text-black mb-3"><i class="fas fa-tags mr-2"></i>Categories</h3>
+                <div class="space-y-2" id="sidebar-categories">
+                    <!-- Category stats will be rendered here -->
+                </div>
+            </div>
+            
+            <!-- Team Members -->
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-600 dark:text-black mb-3"><i class="fas fa-users mr-2"></i>Team</h3>
+                <div class="space-y-2" id="sidebar-team">
+                    <!-- Team members will be rendered here -->
+                </div>
+            </div>
+            
+            <!-- Upcoming Reminders -->
+            <div>
+                <h3 class="text-sm font-semibold text-gray-600 dark:text-black mb-3"><i class="fas fa-bell mr-2"></i>Reminders</h3>
+                <div class="space-y-2" id="sidebar-reminders">
+                    <!-- Reminders will be rendered here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col min-h-screen">
+        <!-- Mobile Header with Sidebar Toggle -->
+        <div class="p-4 flex items-center justify-between">
+            <button onclick="toggleSidebar()" class="md:hidden text-white bg-white/20 p-2 rounded-lg">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="flex-1 md:ml-0"></div>
+        </div>
+
+        <!-- View Toggle -->
+        <div class="px-4 pb-2 flex justify-center">
+            <div class="bg-white/20 dark:bg-gray-800/50 rounded-xl p-1 flex">
+                <button onclick="switchView('tasks')" id="view-tasks-btn" class="px-4 py-2 rounded-lg text-white font-medium transition bg-white/30">
+                    <i class="fas fa-tasks mr-2"></i>Tasks
+                </button>
+                <button onclick="switchView('team')" id="view-team-btn" class="px-4 py-2 rounded-lg text-white/70 hover:text-white transition">
+                    <i class="fas fa-users mr-2"></i>Team
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-1 flex items-center justify-center p-4">
+            <div class="glass dark:glass-dark rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden transition-colors duration-300">
+                <!-- Tasks View -->
+                <div id="tasks-view">
+                    <!-- Header -->
+                    <div class="bg-indigo-600/20 dark:bg-gray-800/50 p-6">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h1 class="text-2xl font-bold text-indigo-600 dark:text-white flex items-center gap-2">
+                                    <i class="fas fa-check-circle"></i> My Tasks
+                                </h1>
+                                <p class="text-indigo-600/80 dark:text-white/80 text-sm mt-1" id="date-display"></p>
+                            </div>
+                            <button onclick="toggleDarkMode()" class="text-white/80 hover:text-white transition p-2">
+                                <i class="fas fa-moon dark:hidden text-xl"></i>
+                                <i class="fas fa-sun hidden dark:block text-xl"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Progress Bar -->
+                        <div class="mt-4">
+                            <div class="flex justify-between text-indigo-600/80 dark:text-white/80 text-sm mb-1">
+                                <span>Progress</span>
+                                <span id="progress-text">0%</span>
+                            </div>
+                            <div class="h-2 bg-indigo-600/30 dark:bg-white/30 rounded-full overflow-hidden">
+                                <div id="progress-bar" class="h-full bg-indigo-600 dark:bg-white rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Search & Input Section -->
+                    <div class="p-6 bg-white dark:bg-gray-800 transition-colors duration-300">
+                        <!-- Search -->
+                        <div class="relative mb-4">
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                            <input 
+                                type="text" 
+                                id="search-input" 
+                                placeholder="Search tasks..." 
+                                class="w-full pl-11 pr-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                            >
+                        </div>
+                        
+                        <!-- Add Task -->
+                        <div class="flex gap-2 flex-wrap">
+                            <input 
+                                type="text" 
+                                id="task-input" 
+                                placeholder="Add a new task..." 
+                                class="flex-1 min-w-[200px] px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                            >
+                            <!-- Category Select -->
+                            <select id="category-select" class="px-3 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="personal">Personal</option>
+                                <option value="work">Work</option>
+                                <option value="health">Health</option>
+                                <option value="shopping">Shopping</option>
+                            </select>
+                            <!-- Priority Select -->
+                            <select id="priority-select" class="px-3 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="low">Low</option>
+                            </select>
+                            <!-- Due Date -->
+                            <input 
+                                type="date" 
+                                id="due-date" 
+                                class="px-3 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                            <!-- Reminder Time -->
+                            <input 
+                                type="time" 
+                                id="reminder-time" 
+                                title="Set reminder"
+                                class="px-3 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 w-32"
+                            >
+                            <!-- Assignee -->
+                            <input 
+                                type="text" 
+                                id="assignee-input" 
+                                placeholder="Assign to..." 
+                                title="Assign to team member"
+                                list="team-members"
+                                class="px-3 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 w-28"
+                            >
+                            <datalist id="team-members"></datalist>
+                            <button 
+                                onclick="addTask()" 
+                                class="bg-indigo-600 text-white px-5 py-3 rounded-xl hover:bg-indigo-700 transition transform hover:scale-105 active:scale-95"
+                            >
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filter & Sort -->
+                    <div class="px-6 pb-4 flex flex-wrap gap-2 items-center justify-between bg-white dark:bg-gray-800 transition-colors duration-300">
+                        <div class="flex gap-2 flex-wrap items-center">
+                            <button onclick="filterTasks('all')" class="filter-btn active px-3 py-1.5 text-sm rounded-lg bg-indigo-100 text-indigo-700 font-medium" data-filter="all">All</button>
+                            <button onclick="filterTasks('active')" class="filter-btn px-3 py-1.5 text-sm rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" data-filter="active">Active</button>
+                            <button onclick="filterTasks('completed')" class="filter-btn px-3 py-1.5 text-sm rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" data-filter="completed">Completed</button>
+                            <div class="h-4 w-px bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Category:</span>
+                            <select id="category-filter" onchange="renderTasks()" class="text-sm px-2 py-1 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                                <option value="all">All</option>
+                                <option value="personal">Personal</option>
+                                <option value="work">Work</option>
+                                <option value="health">Health</option>
+                                <option value="shopping">Shopping</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2 items-center">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Sort by:</span>
+                            <select id="sort-select" onchange="renderTasks()" class="text-sm px-2 py-1 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                                <option value="date">Date Added</option>
+                                <option value="priority">Priority</option>
+                                <option value="due">Due Date</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Task List -->
+                    <div class="px-6 pb-6 max-h-96 overflow-y-auto scrollbar-thin bg-white dark:bg-gray-800 transition-colors duration-300" id="task-list">
+                        <!-- Tasks will be rendered here -->
+                    </div>
+
+                    <!-- Stats Footer -->
+                    <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t dark:border-gray-700 flex flex-wrap justify-between items-center text-sm text-gray-500 dark:text-gray-400 gap-2">
+                        <div class="flex gap-4">
+                            <span><i class="fas fa-list text-indigo-500"></i> <span id="total-count">0</span> total</span>
+                            <span><i class="fas fa-check text-green-500"></i> <span id="completed-count">0</span> done</span>
+                        </div>
+                        <div class="flex gap-3">
+                            <button onclick="exportTasks()" class="hover:text-indigo-500 transition"><i class="fas fa-download"></i> Export</button>
+                            <label class="cursor-pointer hover:text-indigo-500 transition">
+                                <i class="fas fa-upload"></i> Import
+                                <input type="file" accept=".json" onchange="importTasks(event)" class="hidden">
+                            </label>
+                            <button onclick="clearCompleted()" class="text-red-500 hover:text-red-700 transition"><i class="fas fa-trash"></i> Clear</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Team View -->
+                <div id="team-view" class="hidden">
+                    <div class="bg-white/20 dark:bg-gray-800/50 p-6">
+                        <h1 class="text-2xl font-bold text-indigo-600 dark:text-white flex items-center gap-2">
+                            <i class="fas fa-users"></i> Team Members
+                        </h1>
+                        <p class="text-indigo-600/80 dark:text-white/80 text-sm mt-1">Manage your team and assign tasks</p>
+                    </div>
+                    
+                    <div class="p-6 bg-white dark:bg-gray-800">
+                        <!-- Add Team Member -->
+                        <div class="flex gap-2 mb-6">
+                            <input 
+                                type="text" 
+                                id="team-member-input" 
+                                placeholder="Add team member..." 
+                                class="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                            <input 
+                                type="text" 
+                                id="team-role-input" 
+                                placeholder="Role (optional)" 
+                                class="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                            <button onclick="addTeamMember()" class="bg-indigo-600 text-white px-5 py-3 rounded-xl hover:bg-indigo-700 transition">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Team List -->
+                        <div class="space-y-3" id="team-list">
+                            <!-- Team members will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h2 class="text-xl font-bold mb-4 dark:text-white">Edit Task</h2>
+            <input type="text" id="edit-input" class="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <div class="flex gap-2 mb-3">
+                <select id="edit-category" class="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl">
+                    <option value="personal">Personal</option>
+                    <option value="work">Work</option>
+                    <option value="health">Health</option>
+                    <option value="shopping">Shopping</option>
+                </select>
+                <select id="edit-priority" class="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl">
+                    <option value="low">Low Priority</option>
+                    <option value="medium">Medium Priority</option>
+                    <option value="high">High Priority</option>
+                </select>
+            </div>
+            <div class="flex gap-2 mb-3">
+                <input type="date" id="edit-due" class="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl">
+                <input type="time" id="edit-reminder" class="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl" title="Set reminder">
+            </div>
+            <div class="mb-3">
+                <input type="text" id="edit-assignee" placeholder="Assign to..." list="team-members-edit" class="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl" title="Assign to team member">
+                <datalist id="team-members-edit"></datalist>
+            </div>
+            <!-- Comments Section -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-comments mr-2"></i>Comments
+                </label>
+                <div class="flex gap-2 mb-2">
+                    <input type="text" id="edit-comment-input" placeholder="Add a comment..." class="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl text-sm">
+                    <button onclick="addCommentToTask()" class="px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div id="edit-comments-list" class="space-y-2 max-h-32 overflow-y-auto">
+                    <!-- Comments will be rendered here -->
+                </div>
+            </div>
+            <div class="flex gap-2 justify-end">
+                <button onclick="closeEditModal()" class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition">Cancel</button>
+                <button onclick="saveEdit()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <i class="fas fa-check-circle mr-2"></i> <span id="toast-message">Task deleted</span>
+    </div>
+
+    <script>
+        let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+        let teamMembers = JSON.parse(localStorage.getItem('teamMembers')) || [];
+        let currentFilter = 'all';
+        let currentView = 'tasks';
+        let editingTaskId = null;
+        let searchQuery = '';
+        let notificationPermission = false;
+
+        // Initialize and check notification permission
+        async function initNotifications() {
+            if ('Notification' in window) {
+                if (Notification.permission === 'granted') {
+                    notificationPermission = true;
+                } else if (Notification.permission !== 'denied') {
+                    const permission = await Notification.requestPermission();
+                    notificationPermission = permission === 'granted';
+                }
+            }
+        }
+        initNotifications();
+
+        // Dark mode
+        function applyDarkMode(isDark) {
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            localStorage.setItem('darkMode', isDark);
+            updateDarkModeUI();
+        }
+
+        function updateDarkModeUI() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const moonIcon = document.querySelector('.moon-icon');
+            const sunIcon = document.querySelector('.sun-icon');
+            if (moonIcon && sunIcon) {
+                moonIcon.classList.toggle('hidden', isDark);
+                sunIcon.classList.toggle('hidden', !isDark);
+            }
+        }
+
+        if (localStorage.getItem('darkMode') === 'true' || (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.contains('dark');
+            applyDarkMode(!isDark);
+        }
+
+        // Toggle Sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('-translate-x-full');
+        }
+
+        // Switch View
+        function switchView(view) {
+            currentView = view;
+            document.getElementById('tasks-view').classList.toggle('hidden', view !== 'tasks');
+            document.getElementById('team-view').classList.toggle('hidden', view !== 'team');
+            
+            const tasksBtn = document.getElementById('view-tasks-btn');
+            const teamBtn = document.getElementById('view-team-btn');
+            
+            if (view === 'tasks') {
+                tasksBtn.classList.add('bg-white/30');
+                tasksBtn.classList.remove('text-white/70');
+                teamBtn.classList.remove('bg-white/30', 'text-white/70');
+                teamBtn.classList.add('text-white/70');
+            } else {
+                teamBtn.classList.add('bg-white/30');
+                teamBtn.classList.remove('text-white/70');
+                tasksBtn.classList.remove('bg-white/30', 'text-white/70');
+                tasksBtn.classList.add('text-white/70');
+            }
+            
+            if (view === 'team') {
+                renderTeamList();
+            }
+        }
+
+        // Date display
+        document.getElementById('date-display').textContent = new Date().toLocaleDateString('en-US', { 
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+        });
+
+        // Add task
+        function addTask() {
+            const input = document.getElementById('task-input');
+            const category = document.getElementById('category-select');
+            const priority = document.getElementById('priority-select');
+            const dueDate = document.getElementById('due-date');
+            const reminderTime = document.getElementById('reminder-time');
+            const assignee = document.getElementById('assignee-input');
+            const text = input.value.trim();
+            
+            if (text) {
+                // Auto-add team member if new
+                if (assignee.value.trim() && !teamMembers.find(m => m.name.toLowerCase() === assignee.value.trim().toLowerCase())) {
+                    teamMembers.push({ id: Date.now(), name: assignee.value.trim(), role: '' });
+                    localStorage.setItem('teamMembers', JSON.stringify(teamMembers));
+                }
+                
+                tasks.unshift({
+                    id: Date.now(),
+                    text: text,
+                    completed: false,
+                    category: category.value,
+                    priority: priority.value,
+                    dueDate: dueDate.value || null,
+                    reminderTime: reminderTime.value || null,
+                    assignee: assignee.value.trim() || null,
+                    comments: [],
+                    createdAt: new Date().toISOString()
+                });
+                input.value = '';
+                category.value = 'personal';
+                priority.value = 'medium';
+                dueDate.value = '';
+                reminderTime.value = '';
+                assignee.value = '';
+                saveAndRender();
+                showToast('Task added successfully');
+            }
+        }
+
+        // Toggle task
+        function toggleTask(id) {
+            tasks = tasks.map(task => task.id === id ? { ...task, completed: !task.completed } : task);
+            saveAndRender();
+        }
+
+        // Delete task
+        function deleteTask(id) {
+            const task = tasks.find(t => t.id === id);
+            tasks = tasks.filter(task => task.id !== id);
+            saveAndRender();
+            showToast(`"${task.text.substring(0, 20)}..." deleted`);
+        }
+
+        // Open edit modal
+        function openEditModal(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+            
+            editingTaskId = id;
+            document.getElementById('edit-input').value = task.text;
+            document.getElementById('edit-category').value = task.category || 'personal';
+            document.getElementById('edit-priority').value = task.priority;
+            document.getElementById('edit-due').value = task.dueDate || '';
+            document.getElementById('edit-reminder').value = task.reminderTime || '';
+            document.getElementById('edit-assignee').value = task.assignee || '';
+            renderTaskComments(task);
+            document.getElementById('edit-modal').classList.remove('hidden');
+        }
+
+        // Render task comments in edit modal
+        function renderTaskComments(task) {
+            const container = document.getElementById('edit-comments-list');
+            if (!task.comments || task.comments.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-400 dark:text-gray-500">No comments yet</p>';
+                return;
+            }
+            container.innerHTML = task.comments.map(c => `
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-2">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-medium text-indigo-600 dark:text-indigo-400">${c.author}</span>
+                        <span class="text-xs text-gray-400">${new Date(c.time).toLocaleTimeString()}</span>
+                    </div>
+                    <p class="text-sm text-gray-700 dark:text-gray-300">${c.text}</p>
+                </div>
+            `).join('');
+        }
+
+        // Add comment to task
+        function addCommentToTask() {
+            const input = document.getElementById('edit-comment-input');
+            const text = input.value.trim();
+            if (!text || !editingTaskId) return;
+
+            const task = tasks.find(t => t.id === editingTaskId);
+            if (!task) return;
+
+            if (!task.comments) task.comments = [];
+            task.comments.push({
+                text: text,
+                author: 'You',
+                time: new Date().toISOString()
+            });
+            
+            input.value = '';
+            renderTaskComments(task);
+            saveAndRender();
+            showToast('Comment added');
+        }
+
+        // Close edit modal
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.add('hidden');
+            editingTaskId = null;
+        }
+
+        // Save edit
+        function saveEdit() {
+            const text = document.getElementById('edit-input').value.trim();
+            if (!text || !editingTaskId) return;
+
+            // Auto-add team member if new
+            const assignee = document.getElementById('edit-assignee').value.trim();
+            if (assignee && !teamMembers.find(m => m.name.toLowerCase() === assignee.toLowerCase())) {
+                teamMembers.push({ id: Date.now(), name: assignee, role: '' });
+                localStorage.setItem('teamMembers', JSON.stringify(teamMembers));
+            }
+
+            tasks = tasks.map(task => 
+                task.id === editingTaskId ? {
+                    ...task,
+                    text: text,
+                    category: document.getElementById('edit-category').value,
+                    priority: document.getElementById('edit-priority').value,
+                    dueDate: document.getElementById('edit-due').value || null,
+                    reminderTime: document.getElementById('edit-reminder').value || null,
+                    assignee: assignee || null
+                } : task
+            );
+            closeEditModal();
+            saveAndRender();
+            showToast('Task updated successfully');
+        }
+
+        // Filter tasks
+        function filterTasks(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-indigo-100', 'text-indigo-700', 'font-medium');
+                btn.classList.add('text-gray-600', 'dark:text-gray-300');
+            });
+            const activeBtn = document.querySelector(`[data-filter="${filter}"]`);
+            activeBtn.classList.add('bg-indigo-100', 'text-indigo-700', 'font-medium');
+            activeBtn.classList.remove('text-gray-600', 'dark:text-gray-300');
+            renderTasks();
+        }
+
+        // Clear completed
+        function clearCompleted() {
+            const completedCount = tasks.filter(t => t.completed).length;
+            if (completedCount === 0) return;
+            tasks = tasks.filter(task => !task.completed);
+            saveAndRender();
+            showToast(`${completedCount} completed task(s) cleared`);
+        }
+
+        // Export tasks
+        function exportTasks() {
+            const data = JSON.stringify(tasks, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tasks-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Tasks exported successfully');
+        }
+
+        // Import tasks
+        function importTasks(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (Array.isArray(imported)) {
+                        tasks = [...imported, ...tasks];
+                        saveAndRender();
+                        showToast(`${imported.length} tasks imported`);
+                    }
+                } catch (err) {
+                    showToast('Invalid file format');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        // Share task
+        function shareTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Task: ' + task.text,
+                    text: `Check out this task: ${task.text}\nPriority: ${task.priority}\nCategory: ${task.category}`,
+                }).catch(() => {});
+            } else {
+                const text = `Task: ${task.text}\nPriority: ${task.priority}\nCategory: ${task.category}\nDue: ${task.dueDate || 'Not set'}`;
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('Task copied to clipboard');
+                });
+            }
+        }
+
+        // Show toast
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+
+        // Save and render
+        function saveAndRender() {
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            localStorage.setItem('teamMembers', JSON.stringify(teamMembers));
+            renderTasks();
+            renderTeamDatalist();
+            updateProgress();
+            updateSidebar();
+            checkReminders();
+        }
+
+        // Update progress
+        function updateProgress() {
+            const total = tasks.length;
+            const completed = tasks.filter(t => t.completed).length;
+            const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+            
+            document.getElementById('progress-bar').style.width = `${percent}%`;
+            document.getElementById('progress-text').textContent = `${percent}%`;
+            document.getElementById('total-count').textContent = total;
+            document.getElementById('completed-count').textContent = completed;
+        }
+
+        // Update Sidebar
+        function updateSidebar() {
+            const total = tasks.length;
+            const completed = tasks.filter(t => t.completed).length;
+            const pending = total - completed;
+            
+            document.getElementById('sidebar-total').textContent = total;
+            document.getElementById('sidebar-completed').textContent = completed;
+            document.getElementById('sidebar-pending').textContent = pending;
+            
+            // Category stats
+            const categories = ['personal', 'work', 'health', 'shopping'];
+            const categoryColors = { personal: 'blue', work: 'purple', health: 'green', shopping: 'orange' };
+            const categoryIcons = { personal: 'fa-user', work: 'fa-briefcase', health: 'fa-heart', shopping: 'fa-shopping-cart' };
+            
+            let categoryHTML = '';
+            categories.forEach(cat => {
+                const count = tasks.filter(t => t.category === cat && !t.completed).length;
+                categoryHTML += `
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-gray-600 dark:text-black"><i class="fas ${categoryIcons[cat]} text-${categoryColors[cat]}-500 mr-2"></i>${cat.charAt(0).toUpperCase() + cat.slice(1)}</span>
+                        <span class="font-medium text-gray-800 dark:text-black">${count}</span>
+                    </div>
+                `;
+            });
+            document.getElementById('sidebar-categories').innerHTML = categoryHTML || '<p class="text-sm text-gray-400">No tasks</p>';
+            
+            // Team stats
+            let teamHTML = '';
+            teamMembers.forEach(member => {
+                const count = tasks.filter(t => t.assignee === member.name && !t.completed).length;
+                teamHTML += `
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-gray-600 dark:text-black"><i class="fas fa-user-circle text-indigo-500 mr-2"></i>${member.name}</span>
+                        <span class="font-medium text-gray-800 dark:text-black">${count}</span>
+                    </div>
+                `;
+            });
+            document.getElementById('sidebar-team').innerHTML = teamHTML || '<p class="text-sm text-gray-400">No team members</p>';
+            
+            // Upcoming reminders
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            const upcoming = tasks.filter(t => !t.completed && t.dueDate && t.dueDate >= today).slice(0, 5);
+            
+            let reminderHTML = '';
+            upcoming.forEach(task => {
+                const dueInfo = formatDueDate(task.dueDate);
+                reminderHTML += `
+                    <div class="text-sm bg-white/50 dark:bg-gray-700/50 rounded-lg p-2">
+                        <p class="text-gray-700 dark:text-gray-200 truncate">${task.text}</p>
+                        <p class="text-xs ${dueInfo.class}">${dueInfo.text}</p>
+                    </div>
+                `;
+            });
+            document.getElementById('sidebar-reminders').innerHTML = reminderHTML || '<p class="text-sm text-gray-400">No upcoming</p>';
+        }
+
+        // Render team datalist
+        function renderTeamDatalist() {
+            const datalist = document.getElementById('team-members');
+            const datalistEdit = document.getElementById('team-members-edit');
+            const options = teamMembers.map(m => `<option value="${m.name}">`).join('');
+            datalist.innerHTML = options;
+            datalistEdit.innerHTML = options;
+        }
+
+        // Add team member
+        function addTeamMember() {
+            const nameInput = document.getElementById('team-member-input');
+            const roleInput = document.getElementById('team-role-input');
+            const name = nameInput.value.trim();
+            
+            if (!name) return;
+            
+            if (teamMembers.find(m => m.name.toLowerCase() === name.toLowerCase())) {
+                showToast('Team member already exists');
+                return;
+            }
+            
+            teamMembers.push({
+                id: Date.now(),
+                name: name,
+                role: roleInput.value.trim()
+            });
+            
+            nameInput.value = '';
+            roleInput.value = '';
+            saveAndRender();
+            renderTeamList();
+            showToast('Team member added');
+        }
+
+        // Delete team member
+        function deleteTeamMember(id) {
+            const member = teamMembers.find(m => m.id === id);
+            teamMembers = teamMembers.filter(m => m.id !== id);
+            
+            // Unassign tasks
+            tasks = tasks.map(t => t.assignee === member.name ? { ...t, assignee: null } : t);
+            
+            saveAndRender();
+            renderTeamList();
+            showToast('Team member removed');
+        }
+
+        // Render team list
+        function renderTeamList() {
+            const container = document.getElementById('team-list');
+            
+            if (teamMembers.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-400 dark:text-gray-500">
+                        <i class="fas fa-users text-4xl mb-3"></i>
+                        <p>No team members yet. Add one above!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = teamMembers.map(member => {
+                const taskCount = tasks.filter(t => t.assignee === member.name).length;
+                const completedCount = tasks.filter(t => t.assignee === member.name && t.completed).length;
+                
+                return `
+                    <div class="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl group">
+                        <div class="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                            <span class="text-indigo-600 dark:text-indigo-400 font-bold text-lg">${member.name.charAt(0).toUpperCase()}</span>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-medium text-gray-800 dark:text-white">${member.name}</h4>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">${member.role || 'No role'}</p>
+                            <p class="text-xs text-gray-400 mt-1">${completedCount}/${taskCount} tasks completed</p>
+                        </div>
+                        <button onclick="deleteTeamMember(${member.id})" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Get category color
+        function getCategoryColor(category) {
+            switch(category) {
+                case 'work': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400';
+                case 'health': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+                case 'shopping': return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
+                default: return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+            }
+        }
+
+        // Get category icon
+        function getCategoryIcon(category) {
+            switch(category) {
+                case 'work': return 'fa-briefcase';
+                case 'health': return 'fa-heart';
+                case 'shopping': return 'fa-shopping-cart';
+                default: return 'fa-user';
+            }
+        }
+
+        // Get priority color
+        function getPriorityColor(priority) {
+            switch(priority) {
+                case 'high': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+                case 'low': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+                default: return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
+            }
+        }
+
+        // Get priority icon
+        function getPriorityIcon(priority) {
+            switch(priority) {
+                case 'high': return 'fa-arrow-up';
+                case 'low': return 'fa-arrow-down';
+                default: return 'fa-minus';
+            }
+        }
+
+        // Format due date
+        function formatDueDate(dateStr) {
+            if (!dateStr) return '';
+            const due = new Date(dateStr);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            due.setHours(0, 0, 0, 0);
+            
+            const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays < 0) return { text: 'Overdue', class: 'text-red-500' };
+            if (diffDays === 0) return { text: 'Today', class: 'text-orange-500' };
+            if (diffDays === 1) return { text: 'Tomorrow', class: 'text-orange-500' };
+            if (diffDays <= 7) return { text: `${diffDays} days`, class: 'text-gray-500' };
+            return { text: due.toLocaleDateString(), class: 'text-gray-400' };
+        }
+
+        // Check and send reminders
+        function checkReminders() {
+            if (!notificationPermission) return;
+            
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            
+            tasks.forEach(task => {
+                if (task.completed) return;
+                
+                if (task.dueDate) {
+                    const dueInfo = formatDueDate(task.dueDate);
+                    if (dueInfo.text === 'Today' || dueInfo.text === 'Overdue') {
+                        if (!task.notified) {
+                            sendNotification(`Task ${dueInfo.text}: ${task.text}`);
+                            task.notified = true;
+                        }
+                    }
+                }
+                
+                if (task.reminderTime && task.dueDate === today) {
+                    const [hours, minutes] = task.reminderTime.split(':');
+                    const reminderDate = new Date();
+                    reminderDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+                    
+                    if (now >= reminderDate && now < new Date(reminderDate.getTime() + 60000)) {
+                        if (!task.reminderNotified) {
+                            sendNotification(`Reminder: ${task.text}`);
+                            task.reminderNotified = true;
+                        }
+                    }
+                }
+            });
+            
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+        }
+
+        // Send browser notification
+        function sendNotification(message) {
+            if (notificationPermission && Notification.permission === 'granted') {
+                new Notification('Todo Reminder', {
+                    body: message
+                });
+            }
+        }
+
+        // Check reminders every minute
+        setInterval(checkReminders, 60000);
+
+        // Render tasks
+        function renderTasks() {
+            const taskList = document.getElementById('task-list');
+            const searchInput = document.getElementById('search-input');
+            const categoryFilter = document.getElementById('category-filter');
+            searchQuery = searchInput.value.toLowerCase();
+            
+            let filteredTasks = tasks.filter(task => {
+                const matchesSearch = task.text.toLowerCase().includes(searchQuery);
+                const matchesCategory = categoryFilter.value === 'all' || task.category === categoryFilter.value;
+                
+                if (currentFilter === 'active') return matchesSearch && matchesCategory && !task.completed;
+                if (currentFilter === 'completed') return matchesSearch && matchesCategory && task.completed;
+                return matchesSearch && matchesCategory;
+            });
+
+            // Sort
+            const sortBy = document.getElementById('sort-select').value;
+            filteredTasks.sort((a, b) => {
+                if (sortBy === 'priority') {
+                    const priorityOrder = { high: 0, medium: 1, low: 2 };
+                    return priorityOrder[a.priority] - priorityOrder[b.priority];
+                }
+                if (sortBy === 'due') {
+                    if (!a.dueDate && !b.dueDate) return 0;
+                    if (!a.dueDate) return 1;
+                    if (!b.dueDate) return -1;
+                    return new Date(a.dueDate) - new Date(b.dueDate);
+                }
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            });
+
+            if (filteredTasks.length === 0) {
+                taskList.innerHTML = `
+                    <div class="text-center py-8 text-gray-400 dark:text-gray-500">
+                        <i class="fas fa-clipboard text-4xl mb-3"></i>
+                        <p>${searchQuery ? 'No tasks match your search' : 'No tasks yet. Add one above!'}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            taskList.innerHTML = filteredTasks.map(task => {
+                const dueInfo = formatDueDate(task.dueDate);
+                const commentCount = task.comments ? task.comments.length : 0;
+                return `
+                    <div class="task-enter flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl mb-2 group hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                        <label class="checkbox-wrapper cursor-pointer">
+                            <input type="checkbox" class="hidden" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})">
+                            <div class="w-6 h-6 border-2 border-gray-300 dark:border-gray-500 rounded-full flex items-center justify-center transition">
+                                <svg class="w-4 h-4 text-white hidden" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                        </label>
+                        <div class="flex-1 min-w-0">
+                            <span class="block ${task.completed ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'} transition truncate">${task.text}</span>
+                            <div class="flex flex-wrap gap-2 mt-1">
+                                <span class="text-xs px-2 py-0.5 rounded-full ${getCategoryColor(task.category)}">
+                                    <i class="fas ${getCategoryIcon(task.category)} mr-1"></i>${task.category}
+                                </span>
+                                <span class="text-xs px-2 py-0.5 rounded-full ${getPriorityColor(task.priority)}">
+                                    <i class="fas ${getPriorityIcon(task.priority)} mr-1"></i>${task.priority}
+                                </span>
+                                ${task.dueDate ? `<span class="text-xs ${dueInfo.class}"><i class="fas fa-calendar-alt mr-1"></i>${dueInfo.text}</span>` : ''}
+                                ${task.reminderTime ? `<span class="text-xs text-indigo-500"><i class="fas fa-bell mr-1"></i>${task.reminderTime}</span>` : ''}
+                                ${task.assignee ? `<span class="text-xs text-purple-500"><i class="fas fa-user-tag mr-1"></i>${task.assignee}</span>` : ''}
+                                ${commentCount > 0 ? `<span class="text-xs text-gray-500"><i class="fas fa-comment mr-1"></i>${commentCount}</span>` : ''}
+                            </div>
+                        </div>
+                        <button onclick="shareTask(${task.id})" class="opacity-0 group-hover:opacity-100 text-green-500 hover:text-green-600 dark:hover:text-green-400 transition" title="Share">
+                            <i class="fas fa-share-alt"></i>
+                        </button>
+                        <button onclick="openEditModal(${task.id})" class="opacity-0 group-hover:opacity-100 text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteTask(${task.id})" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Search listener
+        document.getElementById('search-input').addEventListener('input', renderTasks);
+
+        // Enter key listeners
+        document.getElementById('task-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') addTask();
+        });
+
+        document.getElementById('team-member-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') addTeamMember();
+        });
+
+        // Initial render
+        renderTasks();
+        updateProgress();
+        updateSidebar();
+        renderTeamDatalist();
+        checkReminders();
+    </script>
+</body>
+</html>
+
